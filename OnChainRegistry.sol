@@ -25,28 +25,39 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
     function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+        // Gas Optimization: Cache storage pointer to eliminate redundant mapping lookups and SLOAD operations
+        Member storage memberToRemove = addressToMember[msg.sender];
+        require(memberToRemove.isRegistered, "User is not registered!");
+
+        string memory removedName = memberToRemove.name;
+        uint256 removedAge = memberToRemove.age;
+        uint256 indexToRemove = memberToRemove.index;
         uint256 lastIndex = members.length - 1;
+
         if(indexToRemove != lastIndex){
-            Member memory lastMember = members[lastIndex];
+            // Gas Optimization: Direct storage-to-storage assignment avoids copying struct through memory
+            Member storage lastMember = members[lastIndex];
+            address lastWallet = lastMember.walletAddress;
             members[indexToRemove] = lastMember;
             members[indexToRemove].index = indexToRemove;
-            addressToMember[lastMember.walletAddress].index = indexToRemove;
+            addressToMember[lastWallet].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
+
         members.pop();
         delete addressToMember[msg.sender];
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
-    function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+    function updateMember(string calldata _name, uint256 _age) public{
+        // Gas Optimization: Cache storage pointer and use calldata to avoid redundant mapping lookups and memory copies
+        Member storage member = addressToMember[msg.sender];
+        require(member.isRegistered, "User is not registered!");
+
+        member.name = _name;
+        member.age = _age;
+
+        Member storage arrayMember = members[member.index];
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
