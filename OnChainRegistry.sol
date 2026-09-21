@@ -16,37 +16,57 @@ contract Registry{
     event MemberRemoved(address indexed walletAddress, string name, uint256 age);
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
-    function registerMember(string memory _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+    // Optimized gas usage: calldata string parameter, storage pointer caching to avoid redundant SLOADs
+    function registerMember(string calldata _name, uint256 _age) public {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(!senderMember.isRegistered, "User is already registered!");
+
         uint256 newIndex = members.length;
         Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
         members.push(newMember);
         addressToMember[msg.sender] = newMember;
+
         emit MemberRegistered(msg.sender, _name, _age);
     }
-    function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+
+    // Optimized gas usage: cached storage pointer, direct storage-to-storage copy during swap-and-pop
+    function removeMember() public {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+
+        uint256 indexToRemove = senderMember.index;
         uint256 lastIndex = members.length - 1;
-        if(indexToRemove != lastIndex){
-            Member memory lastMember = members[lastIndex];
+
+        if (indexToRemove != lastIndex) {
+            Member storage lastMember = members[lastIndex];
+            address lastMemberAddress = lastMember.walletAddress;
+
             members[indexToRemove] = lastMember;
             members[indexToRemove].index = indexToRemove;
-            addressToMember[lastMember.walletAddress].index = indexToRemove;
+            addressToMember[lastMemberAddress].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
+
+        string memory removedName = senderMember.name;
+        uint256 removedAge = senderMember.age;
+
         members.pop();
         delete addressToMember[msg.sender];
+
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
-    function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+
+    // Optimized gas usage: calldata string parameter, cached storage pointers for array and mapping
+    function updateMember(string calldata _name, uint256 _age) public {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+
+        uint256 memberIndex = senderMember.index;
+        senderMember.name = _name;
+        senderMember.age = _age;
+
+        Member storage arrayMember = members[memberIndex];
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
