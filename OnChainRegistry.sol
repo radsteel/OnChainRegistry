@@ -16,54 +16,81 @@ contract Registry{
     event MemberRemoved(address indexed walletAddress, string name, uint256 age);
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
-    function registerMember(string memory _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+    // Gas Optimization:
+    // 1. Using `external` visibility instead of `public` saves gas by avoiding unnecessary array/string parameter copying to memory.
+    // 2. Using `calldata` for string parameters avoids copying memory allocation overhead.
+    // 3. Caching mapping storage pointer `addressToMember[msg.sender]` avoids repeated mapping lookups / keccak256 hash recalculations and redundant SLOAD operations.
+
+    function registerMember(string calldata _name, uint256 _age) external {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(!senderMember.isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
-        Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
-        members.push(newMember);
-        addressToMember[msg.sender] = newMember;
+
+        senderMember.walletAddress = msg.sender;
+        senderMember.name = _name;
+        senderMember.age = _age;
+        senderMember.index = newIndex;
+        senderMember.isRegistered = true;
+
+        members.push(senderMember);
+
         emit MemberRegistered(msg.sender, _name, _age);
     }
-    function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+
+    function removeMember() external {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+
+        uint256 indexToRemove = senderMember.index;
         uint256 lastIndex = members.length - 1;
+
         if(indexToRemove != lastIndex){
-            Member memory lastMember = members[lastIndex];
+            Member storage lastMember = members[lastIndex];
             members[indexToRemove] = lastMember;
             members[indexToRemove].index = indexToRemove;
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
+
+        string memory removedName = senderMember.name;
+        uint256 removedAge = senderMember.age;
+
         members.pop();
         delete addressToMember[msg.sender];
+
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
-    function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
+
+    function updateMember(string calldata _name, uint256 _age) external {
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+
+        uint256 memberIndex = senderMember.index;
+        senderMember.name = _name;
+        senderMember.age = _age;
         members[memberIndex].name = _name;
         members[memberIndex].age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
-    function getAllMembers() public view returns(Member[] memory){
+
+    function getAllMembers() external view returns(Member[] memory){
         return members;
     }
-    function getMemberByIndex(uint256 _index) public view returns(Member memory){
+
+    function getMemberByIndex(uint256 _index) external view returns(Member memory){
         require(_index < members.length, "Index out of bounds!");
         return members[_index];
     }
-    function getMember(address _memberAddress) public view returns (Member memory){
+
+    function getMember(address _memberAddress) external view returns (Member memory){
         return addressToMember[_memberAddress];
     }
-    function getTotalMembers() public view returns(uint256){
+
+    function getTotalMembers() external view returns(uint256){
         return members.length;
     }
-    function isMemberRegistered(address _memberAddress) public view returns(bool){
+
+    function isMemberRegistered(address _memberAddress) external view returns(bool){
         return addressToMember[_memberAddress].isRegistered;
     }
 }
