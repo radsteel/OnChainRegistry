@@ -16,53 +16,73 @@ contract Registry{
     event MemberRemoved(address indexed walletAddress, string name, uint256 age);
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
-    function registerMember(string memory _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+    function registerMember(string calldata _name, uint256 _age) public{
+        // Optimization: Cache mapping reference in storage pointer to avoid repeated key hashing
+        Member storage senderMember = addressToMember[msg.sender];
+        require(!senderMember.isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
         Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
         members.push(newMember);
         addressToMember[msg.sender] = newMember;
         emit MemberRegistered(msg.sender, _name, _age);
     }
+
     function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+        // Optimization: Cache mapping reference in storage pointer
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+
+        uint256 indexToRemove = senderMember.index;
         uint256 lastIndex = members.length - 1;
-        if(indexToRemove != lastIndex){
-            Member memory lastMember = members[lastIndex];
+
+        if (indexToRemove != lastIndex) {
+            // Optimization: Use `storage` pointer instead of `memory` to avoid copying dynamic string
+            // fields to memory and avoid a duplicate SSTORE when updating index during Swap & Pop.
+            Member storage lastMember = members[lastIndex];
+            lastMember.index = indexToRemove;
             members[indexToRemove] = lastMember;
-            members[indexToRemove].index = indexToRemove;
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
+
+        string memory removedName = senderMember.name;
+        uint256 removedAge = senderMember.age;
         members.pop();
         delete addressToMember[msg.sender];
+
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
-    function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
+
+    function updateMember(string calldata _name, uint256 _age) public{
+        // Optimization: Cache mapping reference in storage pointer
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+        uint256 memberIndex = senderMember.index;
+
+        senderMember.name = _name;
+        senderMember.age = _age;
         members[memberIndex].name = _name;
         members[memberIndex].age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
+
     function getAllMembers() public view returns(Member[] memory){
         return members;
     }
+
     function getMemberByIndex(uint256 _index) public view returns(Member memory){
         require(_index < members.length, "Index out of bounds!");
         return members[_index];
     }
+
     function getMember(address _memberAddress) public view returns (Member memory){
         return addressToMember[_memberAddress];
     }
+
     function getTotalMembers() public view returns(uint256){
         return members.length;
     }
+
     function isMemberRegistered(address _memberAddress) public view returns(bool){
         return addressToMember[_memberAddress].isRegistered;
     }
