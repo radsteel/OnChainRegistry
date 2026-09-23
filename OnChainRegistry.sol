@@ -25,28 +25,33 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
     function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+        // Cache mapping reference in storage pointer to avoid duplicate keccak256 mapping slot lookups
+        Member storage user = addressToMember[msg.sender];
+        require(user.isRegistered, "User is not registered!");
+        uint256 indexToRemove = user.index;
         uint256 lastIndex = members.length - 1;
         if(indexToRemove != lastIndex){
-            Member memory lastMember = members[lastIndex];
+            Member storage lastMember = members[lastIndex];
             members[indexToRemove] = lastMember;
             members[indexToRemove].index = indexToRemove;
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
+        string memory removedName = user.name;
+        uint256 removedAge = user.age;
         members.pop();
         delete addressToMember[msg.sender];
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
     function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+        // Cache mapping and array storage references in storage pointers to avoid duplicate slot calculations
+        Member storage user = addressToMember[msg.sender];
+        require(user.isRegistered, "User is not registered!");
+        uint256 memberIndex = user.index;
+        user.name = _name;
+        user.age = _age;
+        Member storage memberInArray = members[memberIndex];
+        memberInArray.name = _name;
+        memberInArray.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
