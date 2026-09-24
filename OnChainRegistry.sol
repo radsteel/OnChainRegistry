@@ -17,7 +17,9 @@ contract Registry{
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
     function registerMember(string memory _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+        // Gas Optimization: Cache mapping pointer to avoid multiple storage lookup evaluations
+        Member storage senderMember = addressToMember[msg.sender];
+        require (!senderMember.isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
         Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
         members.push(newMember);
@@ -25,8 +27,12 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
     function removeMember() public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 indexToRemove = addressToMember[msg.sender].index;
+        // Gas Optimization: Cache storage pointer to eliminate duplicate SLOADs for addressToMember[msg.sender]
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+        uint256 indexToRemove = senderMember.index;
+        string memory removedName = senderMember.name;
+        uint256 removedAge = senderMember.age;
         uint256 lastIndex = members.length - 1;
         if(indexToRemove != lastIndex){
             Member memory lastMember = members[lastIndex];
@@ -34,17 +40,17 @@ contract Registry{
             members[indexToRemove].index = indexToRemove;
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
-        string memory removedName = addressToMember[msg.sender].name;
-        uint256 removedAge = addressToMember[msg.sender].age;
         members.pop();
         delete addressToMember[msg.sender];
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
     function updateMember(string memory _name, uint256 _age) public{
-        require(addressToMember[msg.sender].isRegistered, "User is not registered!");
-        uint256 memberIndex = addressToMember[msg.sender].index;
-        addressToMember[msg.sender].name = _name;
-        addressToMember[msg.sender].age = _age;
+        // Gas Optimization: Cache storage pointer to eliminate redundant SLOADs and SSTORE computations
+        Member storage senderMember = addressToMember[msg.sender];
+        require(senderMember.isRegistered, "User is not registered!");
+        uint256 memberIndex = senderMember.index;
+        senderMember.name = _name;
+        senderMember.age = _age;
         members[memberIndex].name = _name;
         members[memberIndex].age = _age;
 
