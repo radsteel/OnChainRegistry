@@ -46,15 +46,18 @@ contract Registry{
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
 
-    // Optimization: Using calldata and storage pointer minimizes gas consumption for profile updates
+    // Optimization: Using calldata and direct storage pointers minimizes gas consumption for profile updates
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
-        uint256 memberIndex = member.index;
+
+        // Cache array element storage reference before updating fields to save SLOAD/index calculation gas
+        Member storage arrayMember = members[member.index];
+
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
