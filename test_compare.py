@@ -93,11 +93,23 @@ contract Registry{
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
     function registerMember(string calldata _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+        Member storage member = addressToMember[msg.sender];
+        require (!member.isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
-        Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
-        members.push(newMember);
-        addressToMember[msg.sender] = newMember;
+
+        Member storage newMember = members.push();
+        newMember.walletAddress = msg.sender;
+        newMember.name = _name;
+        newMember.age = _age;
+        newMember.index = newIndex;
+        newMember.isRegistered = true;
+
+        member.walletAddress = msg.sender;
+        member.name = _name;
+        member.age = _age;
+        member.index = newIndex;
+        member.isRegistered = true;
+
         emit MemberRegistered(msg.sender, _name, _age);
     }
     function removeMember() public{
@@ -124,8 +136,10 @@ contract Registry{
         uint256 memberIndex = member.index;
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+
+        Member storage arrayMember = members[memberIndex];
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
