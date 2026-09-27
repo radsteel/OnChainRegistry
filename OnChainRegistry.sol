@@ -2,12 +2,15 @@
 pragma solidity ^0.8.18;
 
 contract Registry{
+    // Optimization: Storage packing. Placing `walletAddress` (20 bytes) and `isRegistered` (1 byte)
+    // adjacent in the struct allows EVM to pack both variables into a single 32-byte storage slot (21/32 bytes used).
+    // This saves 1 full SSTORE/SLOAD operation (20,000 gas on cold write / 5,000 gas on warm write per member insertion).
     struct Member {
         address walletAddress;
+        bool isRegistered;
         string name;
         uint256 age;
         uint256 index;
-        bool isRegistered;
     }
     Member[] public members;
     mapping(address => Member) public addressToMember;
@@ -20,7 +23,7 @@ contract Registry{
     function registerMember(string calldata _name, uint256 _age) public{
         require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
-        Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
+        Member memory newMember = Member(msg.sender, true, _name, _age, newIndex);
         members.push(newMember);
         addressToMember[msg.sender] = newMember;
         emit MemberRegistered(msg.sender, _name, _age);
