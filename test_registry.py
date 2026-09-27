@@ -29,13 +29,13 @@ class TestRegistryContract(unittest.TestCase):
 
         m1 = self.registry.functions.getMember(self.accounts[1]).call()
         self.assertEqual(m1[0], self.accounts[1])
-        self.assertEqual(m1[1], "Alice")
-        self.assertEqual(m1[2], 25)
-        self.assertEqual(m1[3], 0)
-        self.assertEqual(m1[4], True)
+        self.assertEqual(m1[1], True)
+        self.assertEqual(m1[2], "Alice")
+        self.assertEqual(m1[3], 25)
+        self.assertEqual(m1[4], 0)
 
         m_idx = self.registry.functions.getMemberByIndex(0).call()
-        self.assertEqual(m_idx[1], "Alice")
+        self.assertEqual(m_idx[2], "Alice")
 
         all_m = self.registry.functions.getAllMembers().call()
         self.assertEqual(len(all_m), 1)
@@ -50,12 +50,12 @@ class TestRegistryContract(unittest.TestCase):
         self.registry.functions.updateMember("Alice Updated", 26).transact({'from': self.accounts[1]})
 
         m = self.registry.functions.getMember(self.accounts[1]).call()
-        self.assertEqual(m[1], "Alice Updated")
-        self.assertEqual(m[2], 26)
+        self.assertEqual(m[2], "Alice Updated")
+        self.assertEqual(m[3], 26)
 
         m_idx = self.registry.functions.getMemberByIndex(0).call()
-        self.assertEqual(m_idx[1], "Alice Updated")
-        self.assertEqual(m_idx[2], 26)
+        self.assertEqual(m_idx[2], "Alice Updated")
+        self.assertEqual(m_idx[3], 26)
 
     def test_remove_member_swap_and_pop(self):
         # Register 3 members
@@ -73,17 +73,17 @@ class TestRegistryContract(unittest.TestCase):
 
         # Check Charlie is now at index 0
         charlie_in_map = self.registry.functions.getMember(self.accounts[3]).call()
-        self.assertEqual(charlie_in_map[3], 0)
+        self.assertEqual(charlie_in_map[4], 0)
 
         charlie_in_arr = self.registry.functions.getMemberByIndex(0).call()
         self.assertEqual(charlie_in_arr[0], self.accounts[3])
-        self.assertEqual(charlie_in_arr[1], "Charlie")
-        self.assertEqual(charlie_in_arr[3], 0)
+        self.assertEqual(charlie_in_arr[2], "Charlie")
+        self.assertEqual(charlie_in_arr[4], 0)
 
         # Check Bob is still at index 1
         bob_in_arr = self.registry.functions.getMemberByIndex(1).call()
         self.assertEqual(bob_in_arr[0], self.accounts[2])
-        self.assertEqual(bob_in_arr[1], "Bob")
+        self.assertEqual(bob_in_arr[2], "Bob")
 
 if __name__ == '__main__':
     unittest.main()
