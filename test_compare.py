@@ -148,6 +148,9 @@ contract Registry{
 }
 """
 
+with open('OnChainRegistry.sol') as f:
+    code_v2 = f.read()
+
 def run_test(source, label):
     compiled = solcx.compile_source(source, output_values=['abi', 'bin'], solc_version='0.8.18')
     _, contract_interface = list(compiled.items())[0]
@@ -177,3 +180,4 @@ def run_test(source, label):
 
 run_test(code_v0, "v0 Original")
 run_test(code_v1, "v1 Storage pointers + Calldata")
+run_test(code_v2, "v2 Direct Storage Event Emission & Storage Pointer Updates (Current)")
