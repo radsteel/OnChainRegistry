@@ -121,11 +121,12 @@ contract Registry{
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
-        uint256 memberIndex = member.index;
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+
+        Member storage arrayMember = members[member.index];
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
