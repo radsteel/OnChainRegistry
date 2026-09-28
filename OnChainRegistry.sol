@@ -26,13 +26,11 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
 
-    // Optimization: Using storage pointers reduces redundant SLOAD operations on addressToMember[msg.sender]
+    // Optimization: Emit event directly from storage pointer before deletion to avoid memory allocations and string copying
     function removeMember() public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
         uint256 indexToRemove = member.index;
-        string memory removedName = member.name;
-        uint256 removedAge = member.age;
 
         uint256 lastIndex = members.length - 1;
         if(indexToRemove != lastIndex){
@@ -42,19 +40,19 @@ contract Registry{
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
         members.pop();
+        emit MemberRemoved(msg.sender, member.name, member.age);
         delete addressToMember[msg.sender];
-        emit MemberRemoved(msg.sender, removedName, removedAge);
     }
 
-    // Optimization: Using calldata and storage pointer minimizes gas consumption for profile updates
+    // Optimization: Using direct storage pointers reduces redundant array index evaluations and storage overhead
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
-        uint256 memberIndex = member.index;
+        Member storage arrayMember = members[member.index];
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
