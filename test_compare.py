@@ -121,11 +121,11 @@ contract Registry{
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
-        uint256 memberIndex = member.index;
+        Member storage arrayMember = members[member.index];
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
@@ -152,6 +152,7 @@ def run_test(source, label):
     compiled = solcx.compile_source(source, output_values=['abi', 'bin'], solc_version='0.8.18')
     _, contract_interface = list(compiled.items())[0]
     w3 = Web3(Web3.EthereumTesterProvider())
+    w3.eth.default_transaction = {'gas': 2000000}
     accounts = w3.eth.accounts
 
     Registry = w3.eth.contract(abi=contract_interface['abi'], bytecode=contract_interface['bin'])

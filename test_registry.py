@@ -14,6 +14,7 @@ class TestRegistryContract(unittest.TestCase):
 
     def setUp(self):
         self.w3 = Web3(Web3.EthereumTesterProvider())
+        self.w3.eth.default_transaction = {'gas': 2000000}
         self.accounts = self.w3.eth.accounts
         Registry = self.w3.eth.contract(abi=self.contract_interface['abi'], bytecode=self.contract_interface['bin'])
         tx_hash = Registry.constructor().transact({'from': self.accounts[0]})
