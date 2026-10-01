@@ -53,8 +53,11 @@ contract Registry{
         uint256 memberIndex = member.index;
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+
+        // Optimization: Caching array element storage pointer avoids redundant array bounds checking and storage slot calculation
+        Member storage arrayMember = members[memberIndex];
+        arrayMember.name = _name;
+        arrayMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
