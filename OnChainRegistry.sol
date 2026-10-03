@@ -1,6 +1,11 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.18;
 
+// Custom errors reduce deployment size and execution gas compared to require error strings
+error UserAlreadyRegistered();
+error UserNotRegistered();
+error IndexOutOfBounds();
+
 contract Registry{
     struct Member {
         address walletAddress;
@@ -16,9 +21,9 @@ contract Registry{
     event MemberRemoved(address indexed walletAddress, string name, uint256 age);
     event MemberUpdated(address indexed walletAddress, string name, uint256 age);
 
-    // Optimization: Using calldata for string parameters reduces gas by avoiding memory allocations
+    // Optimization: Using calldata and custom error reduces gas by avoiding memory allocations and string storage
     function registerMember(string calldata _name, uint256 _age) public{
-        require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
+        if (addressToMember[msg.sender].isRegistered) revert UserAlreadyRegistered();
         uint256 newIndex = members.length;
         Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
         members.push(newMember);
@@ -26,13 +31,13 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
 
-    // Optimization: Using storage pointers reduces redundant SLOAD operations on addressToMember[msg.sender]
+    // Optimization: Emitting event directly before deletion avoids extra string variable allocation in memory
     function removeMember() public{
         Member storage member = addressToMember[msg.sender];
-        require(member.isRegistered, "User is not registered!");
+        if (!member.isRegistered) revert UserNotRegistered();
         uint256 indexToRemove = member.index;
-        string memory removedName = member.name;
-        uint256 removedAge = member.age;
+
+        emit MemberRemoved(msg.sender, member.name, member.age);
 
         uint256 lastIndex = members.length - 1;
         if(indexToRemove != lastIndex){
@@ -43,18 +48,17 @@ contract Registry{
         }
         members.pop();
         delete addressToMember[msg.sender];
-        emit MemberRemoved(msg.sender, removedName, removedAge);
     }
 
-    // Optimization: Using calldata and storage pointer minimizes gas consumption for profile updates
+    // Optimization: Storage pointers for both mapping and array avoid redundant SLOAD operations
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
-        require(member.isRegistered, "User is not registered!");
-        uint256 memberIndex = member.index;
+        if (!member.isRegistered) revert UserNotRegistered();
+        Member storage arrMember = members[member.index];
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+        arrMember.name = _name;
+        arrMember.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
@@ -62,7 +66,7 @@ contract Registry{
         return members;
     }
     function getMemberByIndex(uint256 _index) public view returns(Member memory){
-        require(_index < members.length, "Index out of bounds!");
+        if (_index >= members.length) revert IndexOutOfBounds();
         return members[_index];
     }
     function getMember(address _memberAddress) public view returns (Member memory){
