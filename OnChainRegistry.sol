@@ -26,13 +26,11 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
 
-    // Optimization: Using storage pointers reduces redundant SLOAD operations on addressToMember[msg.sender]
+    // Optimization: Accessing storage pointer fields directly in event emission avoids unnecessary memory allocations for strings
     function removeMember() public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
         uint256 indexToRemove = member.index;
-        string memory removedName = member.name;
-        uint256 removedAge = member.age;
 
         uint256 lastIndex = members.length - 1;
         if(indexToRemove != lastIndex){
@@ -42,8 +40,8 @@ contract Registry{
             addressToMember[lastMember.walletAddress].index = indexToRemove;
         }
         members.pop();
+        emit MemberRemoved(msg.sender, member.name, member.age);
         delete addressToMember[msg.sender];
-        emit MemberRemoved(msg.sender, removedName, removedAge);
     }
 
     // Optimization: Using calldata and storage pointer minimizes gas consumption for profile updates
