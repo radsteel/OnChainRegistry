@@ -26,7 +26,7 @@ contract Registry{
         emit MemberRegistered(msg.sender, _name, _age);
     }
 
-    // Optimization: Using storage pointers reduces redundant SLOAD operations on addressToMember[msg.sender]
+    // Optimization: Storage pointers and unchecked arithmetic optimize gas during swap-and-pop removal
     function removeMember() public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
@@ -34,7 +34,11 @@ contract Registry{
         string memory removedName = member.name;
         uint256 removedAge = member.age;
 
-        uint256 lastIndex = members.length - 1;
+        uint256 lastIndex;
+        // Optimization: Unchecked math saves gas since length > 0 is guaranteed by isRegistered guard
+        unchecked {
+            lastIndex = members.length - 1;
+        }
         if(indexToRemove != lastIndex){
             Member storage lastMember = members[lastIndex];
             lastMember.index = indexToRemove;
@@ -46,15 +50,17 @@ contract Registry{
         emit MemberRemoved(msg.sender, removedName, removedAge);
     }
 
-    // Optimization: Using calldata and storage pointer minimizes gas consumption for profile updates
+    // Optimization: Storage pointers minimize gas consumption for profile updates
     function updateMember(string calldata _name, uint256 _age) public{
         Member storage member = addressToMember[msg.sender];
         require(member.isRegistered, "User is not registered!");
         uint256 memberIndex = member.index;
         member.name = _name;
         member.age = _age;
-        members[memberIndex].name = _name;
-        members[memberIndex].age = _age;
+
+        Member storage memberInArr = members[memberIndex];
+        memberInArr.name = _name;
+        memberInArr.age = _age;
 
         emit MemberUpdated(msg.sender, _name, _age);
     }
