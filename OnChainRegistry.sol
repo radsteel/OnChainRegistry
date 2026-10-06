@@ -34,7 +34,11 @@ contract Registry{
         string memory removedName = member.name;
         uint256 removedAge = member.age;
 
-        uint256 lastIndex = members.length - 1;
+        // Optimization: Use unchecked for lastIndex calculation as members.length is guaranteed >= 1 (caller is registered)
+        uint256 lastIndex;
+        unchecked {
+            lastIndex = members.length - 1;
+        }
         if(indexToRemove != lastIndex){
             Member storage lastMember = members[lastIndex];
             lastMember.index = indexToRemove;
