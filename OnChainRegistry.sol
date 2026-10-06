@@ -2,12 +2,18 @@
 pragma solidity ^0.8.18;
 
 contract Registry{
+    // Optimization: Pack struct variables to minimize EVM storage slots.
+    // Slot 0: walletAddress (20 bytes) + isRegistered (1 byte) = 21 bytes total (fits in 1 slot)
+    // Slot 1: age (32 bytes)
+    // Slot 2: index (32 bytes)
+    // Slot 3: name (dynamic string)
+    // Total: 4 storage slots instead of 5 slots (saving ~20,000 gas per SSTORE operation on registration/removal)
     struct Member {
         address walletAddress;
-        string name;
+        bool isRegistered;
         uint256 age;
         uint256 index;
-        bool isRegistered;
+        string name;
     }
     Member[] public members;
     mapping(address => Member) public addressToMember;
@@ -20,7 +26,7 @@ contract Registry{
     function registerMember(string calldata _name, uint256 _age) public{
         require (!addressToMember[msg.sender].isRegistered, "User is already registered!");
         uint256 newIndex = members.length;
-        Member memory newMember = Member(msg.sender, _name, _age, newIndex, true);
+        Member memory newMember = Member(msg.sender, true, _age, newIndex, _name);
         members.push(newMember);
         addressToMember[msg.sender] = newMember;
         emit MemberRegistered(msg.sender, _name, _age);
